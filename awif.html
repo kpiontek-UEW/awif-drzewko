@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <title>AWIF – Wycena europejnych opcji (CRR) – drzewo 1–2 okresy</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- MathJax (LaTeX w przeglądarce). Wymaga internetu. Jeśli hosting bez internetu – wyświetlą się wzory „na sucho”. -->
+  <script>
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['$$','$$']] }, svg: { fontCache: 'global' } };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root { --pad: 14px; --font: 16px; }
+    body { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; margin: 0; line-height: 1.45; }
+    header { background: #f5f5f5; padding: 18px var(--pad); border-bottom: 1px solid #e5e5e5; }
+    h1 { font-size: 20px; margin: 0 0 6px; }
+    .grid { display: grid; gap: 18px; grid-template-columns: 320px 1fr; padding: 18px var(--pad); }
+    fieldset { border: 1px solid #e5e5e5; padding: 12px; border-radius: 8px; }
+    legend { padding: 0 6px; font-weight: 600; }
+    label { display: block; margin: 8px 0 4px; font-size: 14px; }
+    input[type="number"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: var(--font); }
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .row > label { margin: 0; }
+    .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    button { padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; background: white; cursor: pointer; }
+    button:hover { background: #fafafa; }
+    .panel { border: 1px solid #e5e5e5; border-radius: 8px; padding: 12px; }
+    .two { display: grid; gap: 12px; grid-template-columns: 1fr; }
+    .warn { background: #fff6e5; border: 1px solid #f0d6a6; padding: 8px 10px; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px dashed #e5e5e5; padding: 6px 8px; text-align: right; font-variant-numeric: tabular-nums; }
+    th { text-align: left; font-weight: 600; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    svg { width: 100%; height: auto; max-height: 480px; }
+    .small { font-size: 13px; color: #666; }
+    .footer-note { margin-top: 10px; }
+    .result { font-size: 18px; font-weight: 700; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="small">„Twórca korepetytora dochował wszelkiej staranności, ale technologia jest nowa i stosujesz ją na własną odpowiedzialność. Materiały AWIF uzupełniają wykład, ćwiczenia i konsultacje.”</div>
+  <h1>Wycena europejnych opcji (call/put) – model dwumianowy CRR – 1 lub 2 okresy</h1>
+  <div class="small">Metodologia: świat neutralny względem ryzyka, dyskontowanie \(e^{-r\Delta t}\), wzory CRR. Notacja zgodna z kursem.</div>
+</header>
+
+<div class="grid">
+  <!-- Lewa kolumna: wejścia -->
+  <div>
+    <form id="frm">
+      <fieldset>
+        <legend>Parametry wejściowe</legend>
+        <label>S<sub>0</sub> – cena początkowa (zł)
+          <input type="number" step="0.0001" min="0.0000001" id="S0" value="100">
+        </label>
+        <label>K – cena wykonania (zł)
+          <input type="number" step="0.0001" min="0.0000001" id="K" value="102">
+        </label>
+        <label>r – roczna stopa wolna od ryzyka (ciągła), np. 0.06
+          <input type="number" step="0.00000001" id="r" value="0.06">
+        </label>
+        <label>σ – roczna zmienność, np. 0.30
+          <input type="number" step="0.00000001" min="0.0000001" id="sigma" value="0.30">
+        </label>
+        <label>T – czas do wygaśnięcia (lata), np. 1.0
+          <input type="number" step="0.00000001" min="0.0000001" id="T" value="1">
+        </label>
+
+        <div class="row" style="margin-top:8px">
+          <label><input type="radio" name="n" value="1"> n = 1 okres</label>
+          <label><input type="radio" name="n" value="2" checked> n = 2 okresy</label>
+        </div>
+        <div class="row">
+          <label><input type="radio" name="otype" value="call" checked> call</label>
+          <label><input type="radio" name="otype" value="put"> put</label>
+        </div>
+
+        <div class="btns">
+          <button type="button" id="exA">Wstaw zestaw A (call, n=1)</button>
+          <button type="button" id="exB">Wstaw zestaw B (call, n=2)</button>
+          <button type="button" id="exC">Wstaw zestaw C (put, n=2)</button>
+          <button type="button" id="calc">Przelicz</button>
+        </div>
+      </fieldset>
+    </form>
+
+    <div class="panel small footer-note">
+      <b>Pamiętaj, że:</b>
+      <ul>
+        <li>\(q\) to <i>neutralne względem ryzyka</i> prawdopodobieństwo, nie „rynkowe”.</li>
+        <li>W CRR: \(u=e^{\sigma\sqrt{\Delta t}},\ d=1/u\), zatem węzeł środkowy dla \(n=2\) daje \(S_{ud}=S_0\).</li>
+        <li>Wycena europejska: wykonanie wyłącznie w \(T\); brak premii za wcześniejsze wykonanie.</li>
+        <li>Dyskontowanie na każdym kroku: \(e^{-r\Delta t}\).</li>
+        <li>Kontrola sensowności: \(0<q<1\), \(V_0\ge 0\).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Prawa kolumna: wyniki i drzewo -->
+  <div class="two">
+    <div class="panel">
+      <h3>Wzory (CRR)</h3>
+      <div class="small">
+        \[
+          \Delta t=\frac{T}{n},\quad
+          u=e^{\sigma\sqrt{\Delta t}},\quad
+          d=e^{-\sigma\sqrt{\Delta t}}=\frac{1}{u},\quad
+          q=\frac{e^{r\Delta t}-d}{u-d}
+        \]
+        Wypłaty w \(T\): dla call \(C=\max(S-K,0)\), dla put \(P=\max(K-S,0)\).<br>
+        Indukcja wstecz: \(
+          V_{t-\Delta t}=e^{-r\Delta t}\big(qV_{\text{up}}+(1-q)V_{\text{down}}\big)
+        \), gdzie \(V\in\{C,P\}\).
+      </div>
+    </div>
+
+    <div class="panel" id="alerts"></div>
+
+    <div class="panel">
+      <h3>Parametry pośrednie (dokładność pośrednia: 8 miejsc)</h3>
+      <table id="tblParams"></table>
+    </div>
+
+    <div class="panel">
+      <h3>Drzewo cen instrumentu bazowego \(S\)</h3>
+      <div id="treeS"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Wypłaty w \(T\) i indukcja wstecz</h3>
+      <table id="tblSteps"></table>
+    </div>
+
+    <div class="panel">
+      <h3>Wynik</h3>
+      <div id="result" class="result"></div>
+      <div class="small">Wynik końcowy prezentowany do 4 miejsc po przecinku. Obliczenia pośrednie do 8 miejsc.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Pomocnicze: formaty
+  const f8 = x => (isFinite(x) ? Number(x).toFixed(8) : '—');
+  const f4 = x => (isFinite(x) ? Number(x).toFixed(4) : '—');
+  const m = (a,b)=> (a*b); // skrót w razie potrzeby
+
+  function readInputs() {
+    const S0 = Number(document.getElementById('S0').value);
+    const K = Number(document.getElementById('K').value);
+    const r = Number(document.getElementById('r').value);
+    const sigma = Number(document.getElementById('sigma').value);
+    const T = Number(document.getElementById('T').value);
+    const n = Number(document.querySelector('input[name="n"]:checked').value);
+    const otype = document.querySelector('input[name="otype"]:checked').value; // call | put
+    return {S0,K,r,sigma,T,n,otype};
+  }
+
+  function compute({S0,K,r,sigma,T,n,otype}) {
+    const alerts = [];
+    if (!(S0>0 && K>0 && sigma>0 && T>0)) alerts.push('Wszystkie wartości muszą być dodatnie (S0, K, σ, T).');
+    if (!(n===1 || n===2)) alerts.push('Obsługiwane są n=1 lub n=2.');
+
+    const dt = T / n;
+    const sqrt_dt = Math.sqrt(dt);
+    const u = Math.exp(sigma * sqrt_dt);
+    const d = Math.exp(-sigma * sqrt_dt);
+    const erdt = Math.exp(r * dt);
+    const e_m_rdt = Math.exp(-r * dt);
+    const q = (erdt - d) / (u - d);
+
+    if (!(q>0 && q<1)) alerts.push('Ostrzeżenie: q nie należy do (0,1). Sprawdź r, σ, T.');
+
+    // Drzewo cen S
+    const Su = S0 * u, Sd = S0 * d;
+    const Suu = S0 * u * u, Sud = S0 * u * d, Sdd = S0 * d * d;
+
+    // Wypłaty końcowe (T)
+    function payoff(S) { return (otype==='call') ? Math.max(S - K, 0) : Math.max(K - S, 0); }
+    let leafs;
+    if (n===1) {
+      leafs = { up: payoff(Su), down: payoff(Sd) };
+    } else {
+      leafs = { uu: payoff(Suu), ud: payoff(Sud), dd: payoff(Sdd) };
+    }
+
+    // Indukcja wstecz
+    let V0, steps = [];
+    if (n===1) {
+      const V0_tmp = e_m_rdt * ( q * leafs.up + (1-q) * leafs.down );
+      steps.push({label:'V0', expr:`e^{-rΔt}[ q·V_up + (1-q)·V_down ]`, val: V0_tmp});
+      V0 = V0_tmp;
+    } else {
+      // warstwa 1 (czas T - Δt)
+      const Vu = e_m_rdt * ( q * leafs.uu + (1-q) * leafs.ud );
+      const Vd = e_m_rdt * ( q * leafs.ud + (1-q) * leafs.dd );
+      steps.push({label:'V_u', expr:`e^{-rΔt}[ q·V_uu + (1-q)·V_ud ]`, val: Vu});
+      steps.push({label:'V_d', expr:`e^{-rΔt}[ q·V_ud + (1-q)·V_dd ]`, val: Vd});
+      // czas 0
+      const V0_tmp = e_m_rdt * ( q * Vu + (1-q) * Vd );
+      steps.push({label:'V0', expr:`e^{-rΔt}[ q·V_u + (1-q)·V_d ]`, val: V0_tmp});
+      V0 = V0_tmp;
+    }
+
+    return {
+      alerts, dt, sqrt_dt, u, d, q, erdt, e_m_rdt,
+      Su, Sd, Suu, Sud, Sdd, leafs, steps, V0
+    };
+  }
+
+  function renderParams(params, inputs) {
+    const {dt, sqrt_dt, u, d, q, erdt, e_m_rdt} = params;
+    const el = document.getElementById('tblParams');
+    el.innerHTML = `
+      <tr><th>Wielkość</th><th>Wartość</th><th>Wzór</th></tr>
+      <tr><td>Δt</td><td class="mono">${f8(dt)}</td><td>Δt = T / n</td></tr>
+      <tr><td>√Δt</td><td class="mono">${f8(sqrt_dt)}</td><td>pierwiastek z Δt</td></tr>
+      <tr><td>u</td><td class="mono">${f8(u)}</td><td>u = e^{σ√Δt}</td></tr>
+      <tr><td>d</td><td class="mono">${f8(d)}</td><td>d = e^{-σ√Δt} = 1/u</td></tr>
+      <tr><td>e^{rΔt}</td><td class="mono">${f8(erdt)}</td><td>dyskont na odwrót</td></tr>
+      <tr><td>e^{-rΔt}</td><td class="mono">${f8(e_m_rdt)}</td><td>dyskont na każdy krok</td></tr>
+      <tr><td>q</td><td class="mono">${f8(q)}</td><td>q = (e^{rΔt} - d) / (u - d)</td></tr>
+    `;
+    if (window.MathJax) MathJax.typesetPromise();
+  }
+
+  function renderTreeS(params, inputs) {
+    const {S0} = inputs;
+    const {Su,Sd,Suu,Sud,Sdd} = params;
+    const {n} = inputs;
+    const w = 720, h = (n===1? 200: 260);
+    const x0=80, x1=360, x2=640;
+    const yMid = h/2, dy = 80;
+
+    function node(x,y, labelTop, labelBottom) {
+      return `
+        <circle cx="${x}" cy="${y}" r="16" fill="white" stroke="#888"/>
+        <text x="${x}" y="${y-22}" text-anchor="middle" font-size="12" fill="#333">${labelTop}</text>
+        <text x="${x}" y="${y+5}" text-anchor="middle" font-size="12" fill="#000" font-family="monospace">${labelBottom}</text>
+      `;
+    }
+
+    let edges = '', nodes = '';
+    // poziom 0
+    nodes += node(x0, yMid, 'S₀', f4(S0));
+
+    if (n===1) {
+      edges += `<line x1="${x0+16}" y1="${yMid-16}" x2="${x1-16}" y2="${yMid-40}" stroke="#aaa"/>`;
+      edges += `<line x1="${x0+16}" y1="${yMid+16}" x2="${x1-16}" y2="${yMid+40}" stroke="#aaa"/>`;
+      nodes += node(x1, yMid-56, 'S_u', f4(Su));
+      nodes += node(x1, yMid+56, 'S_d', f4(Sd));
+    } else {
+      // poziom 1
+      edges += `<line x1="${x0+16}" y1="${yMid-16}" x2="${x1-16}" y2="${yMid-56}" stroke="#aaa"/>`;
+      edges += `<line x1="${x0+16}" y1="${yMid+16}" x2="${x1-16}" y2="${yMid+56}" stroke="#aaa"/>`;
+      nodes += node(x1, yMid-72, 'S_u', f4(Su));
+      nodes += node(x1, yMid+72, 'S_d', f4(Sd));
+      // poziom 2
+      edges += `<line x1="${x1+16}" y1="${yMid-72-16}" x2="${x2-16}" y2="${yMid-100}" stroke="#aaa"/>`; // u->uu
+      edges += `<line x1="${x1+16}" y1="${yMid-72+16}" x2="${x2-16}" y2="${yMid}" stroke="#aaa"/>`;     // u->ud
+      edges += `<line x1="${x1+16}" y1="${yMid+72-16}" x2="${x2-16}" y2="${yMid}" stroke="#aaa"/>`;     // d->ud
+      edges += `<line x1="${x1+16}" y1="${yMid+72+16}" x2="${x2-16}" y2="${yMid+100}" stroke="#aaa"/>`; // d->dd
+      nodes += node(x2, yMid-116, 'S_uu', f4(Suu));
+      nodes += node(x2, yMid,     'S_ud', f4(Sud)); // powinno równać się S0 (CRR)
+      nodes += node(x2, yMid+116, 'S_dd', f4(Sdd));
+    }
+
+    const svg = `
+      <svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Drzewo cen S">
+        <rect x="0" y="0" width="${w}" height="${h}" fill="#fff"/>
+        ${edges}
+        ${nodes}
+      </svg>`;
+    document.getElementById('treeS').innerHTML = svg;
+  }
+
+  function renderSteps(params, inputs) {
+    const {n, otype} = inputs;
+    const {leafs, steps} = params;
+    const el = document.getElementById('tblSteps');
+
+    if (n===1) {
+      el.innerHTML = `
+        <tr><th>Węzeł</th><th>Wartość</th><th>Wyjaśnienie</th></tr>
+        <tr><td class="mono">V_up</td><td class="mono">${f8(leafs.up)}</td><td>wypłata w T (gałąź up)</td></tr>
+        <tr><td class="mono">V_down</td><td class="mono">${f8(leafs.down)}</td><td>wypłata w T (gałąź down)</td></tr>
+        <tr><td class="mono">${steps[0].label}</td><td class="mono">${f8(steps[0].val)}</td><td>${steps[0].expr}</td></tr>
+      `;
+    } else {
+      el.innerHTML = `
+        <tr><th>Węzeł</th><th>Wartość</th><th>Wyjaśnienie</th></tr>
+        <tr><td class="mono">V_uu</td><td class="mono">${f8(leafs.uu)}</td><td>wypłata w T</td></tr>
+        <tr><td class="mono">V_ud</td><td class="mono">${f8(leafs.ud)}</td><td>wypłata w T</td></tr>
+        <tr><td class="mono">V_dd</td><td class="mono">${f8(leafs.dd)}</td><td>wypłata w T</td></tr>
+        <tr><td class="mono">${steps[0].label}</td><td class="mono">${f8(steps[0].val)}</td><td>${steps[0].expr}</td></tr>
+        <tr><td class="mono">${steps[1].label}</td><td class="mono">${f8(steps[1].val)}</td><td>${steps[1].expr}</td></tr>
+        <tr><td class="mono">${steps[2].label}</td><td class="mono">${f8(steps[2].val)}</td><td>${steps[2].expr}</td></tr>
+      `;
+    }
+    if (window.MathJax) MathJax.typesetPromise();
+  }
+
+  function renderAlerts(params) {
+    const box = document.getElementById('alerts');
+    if (!params.alerts.length) { box.innerHTML = '<div class="small">Brak ostrzeżeń. Parametry w typowym zakresie.</div>'; return; }
+    box.innerHTML = `<div class="warn"><b>Uwaga</b><br>${params.alerts.map(x=>'- '+x).join('<br>')}</div>`;
+  }
+
+  function renderResult(params, inputs) {
+    const {V0} = params;
+    const typ = (inputs.otype==='call') ? 'opcji CALL' : 'opcji PUT';
+    document.getElementById('result').textContent = `Wartość teoretyczna ${typ} dziś: ${f4(V0)} zł`;
+  }
+
+  function recalc() {
+    const inputs = readInputs();
+    const params = compute(inputs);
+    renderAlerts(params);
+    renderParams(params, inputs);
+    renderTreeS(params, inputs);
+    renderSteps(params, inputs);
+    renderResult(params, inputs);
+    if (window.MathJax) MathJax.typesetPromise();
+  }
+
+  // Zestawy testowe (jak w materiałach demonstracyjnych)
+  document.getElementById('exA').onclick = () => {
+    document.getElementById('S0').value = 100;
+    document.getElementById('K').value = 102;
+    document.getElementById('r').value = 0.06;
+    document.getElementById('sigma').value = 0.30;
+    document.getElementById('T').value = 0.5;
+    document.querySelector('input[name="n"][value="1"]').checked = true;
+    document.querySelector('input[name="otype"][value="call"]').checked = true;
+    recalc();
+  };
+  document.getElementById('exB').onclick = () => {
+    document.getElementById('S0').value = 100;
+    document.getElementById('K').value = 102;
+    document.getElementById('r').value = 0.06;
+    document.getElementById('sigma').value = 0.30;
+    document.getElementById('T').value = 1.0;
+    document.querySelector('input[name="n"][value="2"]').checked = true;
+    document.querySelector('input[name="otype"][value="call"]').checked = true;
+    recalc();
+  };
+  document.getElementById('exC').onclick = () => {
+    document.getElementById('S0').value = 100;
+    document.getElementById('K').value = 102;
+    document.getElementById('r').value = 0.06;
+    document.getElementById('sigma').value = 0.30;
+    document.getElementById('T').value = 1.0;
+    document.querySelector('input[name="n"][value="2"]').checked = true;
+    document.querySelector('input[name="otype"][value="put"]').checked = true;
+    recalc();
+  };
+
+  document.getElementById('calc').onclick = recalc;
+
+  // Automatyczne liczenie przy zmianach
+  document.querySelectorAll('#frm input').forEach(inp => {
+    inp.addEventListener('change', recalc);
+    inp.addEventListener('keyup', recalc);
+  });
+
+  // start
+  recalc();
+</script>
+</body>
+</html>
