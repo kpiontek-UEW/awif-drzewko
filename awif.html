@@ -8,6 +8,12 @@
   <script>
     window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['$$','$$']] }, svg: { fontCache: 'global' } };
   </script>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)']], displayMath: [['$$','$$']] },
+    svg: { fontCache: 'global', scale: 0.95 },   // <-- to nowa linia
+  };
+</script>
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   <style>
     :root { --pad: 14px; --font: 16px; }
@@ -35,6 +41,12 @@
     .small { font-size: 13px; color: #666; }
     .footer-note { margin-top: 10px; }
     .result { font-size: 18px; font-weight: 700; }
+mjx-container {
+  zoom: 0.9;                    /* lekko pomniejsza wzory */
+  max-width: 100% !important;   /* nie wychodzą poza szerokość strony */
+  overflow-x: auto;             /* umożliwia przewijanie, jeśli jednak za szerokie */
+  display: inline-block !important;
+}
   </style>
 </head>
 <body>
